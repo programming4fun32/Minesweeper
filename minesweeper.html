@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Minesweeper</title>
+    <script src="jquery-3.7.1.min.js"></script>
+    <script>
+        var BOARD_SIZE = 9;
+        var MINES_AMOUNT = 20;
+        var FLAG_IMAGE = "url(Flag.png)";
+
+        var tiles = {};
+        var mines = [];
+
+        function MinesAround(i) {
+            let Mines = 0;
+            let Check = [];
+            Check.push(i - BOARD_SIZE - 1);
+            Check.push(i - BOARD_SIZE);
+            Check.push(i - BOARD_SIZE + 1);
+            Check.push(i - 1);
+            Check.push(i);
+            Check.push(i + 1);
+            Check.push(i + BOARD_SIZE - 1);
+            Check.push(i + BOARD_SIZE);
+            Check.push(i + BOARD_SIZE + 1);
+            Check.forEach(function(i) {
+                if (mines.includes(i)) {
+                    Mines++;
+                }
+            });
+            return Mines;
+        }
+
+        function Flag_Tile(i) {
+            let tile = tiles[i];
+            if (tile.dug) return;
+            if (tile.flagged) {
+                tile.flagged = false;
+                console.log("Unflagged " + i);
+                $(tile.obj).css("background-image", "");
+            } else {
+                tile.flagged = true;
+                console.log("Flagged " + i);
+                $(tile.obj).css("background-image", FLAG_IMAGE);
+            }
+        }
+
+        function Dig_Tile(i) {
+            let tile = tiles[i];
+            if (tile.flagged || tile.dug) return;
+            tile.dug = true;
+            if (mines.includes(i)) {
+                alert("BOOM!");
+                NewGame();
+                return;
+            }
+            console.log("Dug " + i);
+            if (i % 2 == 0) {
+                $(tile.obj).css("background-color", "var(--DIG_COLOR_2)");
+            } else {
+                $(tile.obj).css("background-color", "var(--DIG_COLOR_1)");
+            }
+        }
+
+        function NewGame() {
+            console.log("Game Started")
+            tiles = {};
+            mines = [];
+            $(".Board_Tile").remove();
+            $("#container").css("width",60 * BOARD_SIZE).css("height",60 * BOARD_SIZE).css("grid-template-columns",`repeat(${BOARD_SIZE},auto)`);
+
+            for (let i = 1; i <= BOARD_SIZE ** 2; i++) {
+                var tile = document.createElement("div");
+                tile.className = "Board_Tile";
+                $(tile).click(function () { Dig_Tile(i) });
+                tile.oncontextmenu = () => { Flag_Tile(i); return false; };
+                if (i % 2 == 0) $(tile).css("background-color", "var(--BOARD_COLOR_2)");
+                $("#container").append(tile);
+                tiles[i] = { obj: tile, flagged: false, dug: false, };
+            }
+
+            for (let i = 1; i <= MINES_AMOUNT; i++) {
+                let location = 0;
+                while (true) {
+                    location = Math.round(Math.random() * (BOARD_SIZE ** 2 - 1)) + 1;
+                    if (!mines.includes(location)) {
+                        break;
+                    }
+                }
+                console.log(location);
+                mines.push(location);
+            }
+            mines.forEach((v) => {
+                Flag_Tile(v);
+            });
+            $.each(tiles,function(i,Tile_Data) {
+                Tile_Data.obj.innerHTML = MinesAround(i);
+            });
+        }
+
+        function CheckGameWin() {
+            let dug = 0;
+            $.each(tiles,function(i,Tile_Data) {
+                if (Tile_Data.dug) {
+                    dug++
+                }
+            });
+            if (dug >= BOARD_SIZE ** 2 - MINES_AMOUNT) {
+                alert("Win!");
+                NewGame();
+            }
+        }
+
+        $(document).ready(function () {
+            NewGame();
+        });
+    </script>
+    <style>
+        :root {
+            --BOARD_COLOR_1: #69923e;
+            --BOARD_COLOR_2: #4e7837;
+            --DIG_COLOR_1: #654520;
+            --DIG_COLOR_2: #825B32;
+        }
+
+        #container {
+            width: 420px;
+            height: 420px;
+            background-color: #ccc;
+            display: grid;
+            grid-template-columns: repeat(7,auto);
+            padding: 0 0;
+        }
+
+        .Board_Tile {
+            width: 60px;
+            height: 60px;
+            background-color: var(--BOARD_COLOR_1);
+            background-size: 100%;
+
+        }
+    </style>
+
+<body>
+    <label>Mines left: 10</label>
+    <div id="container"></div>
+</body>
+</head>
+
+</html>
