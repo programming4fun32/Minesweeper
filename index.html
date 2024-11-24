@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Minesweeper</title>
+    <link rel="icon"
+        href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABMSURBVDhPYxj6gBFKw8B/OIEFABWjqyfNABhANogJShMN0F1BtAvQNcIAQQNwacQFQHr/AwlsjiAKgA2AMIkDJAciOhh4A4Y8YGAAABSHDgmFKaucAAAAAElFTkSuQmCC">
+    <script src="jquery-3.7.1.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>
+        var BOARD_SIZE = 11;
+        var MINES_AMOUNT = 15;
+        const FLAG_IMAGE = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABMSURBVDhPYxj6gBFKw8B/OIEFABWjqyfNABhANogJShMN0F1BtAvQNcIAQQNwacQFQHr/AwlsjiAKgA2AMIkDJAciOhh4A4Y8YGAAABSHDgmFKaucAAAAAElFTkSuQmCC)";
+        const MINE_IMAGE = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAASUExURf/hAP+IAP////8ADAAAAAAAANBr0xwAAAAGdFJOU///////ALO/pL8AAAAJcEhZcwAADsMAAA7DAcdvqGQAAABDSURBVChTjcxJDgAgCANArPL/L8siiMaDPbUTAvGVCtYLUNORAGpdJQA4L4ak/JAFow22E2KbOES+IUX7G5y8LYgwT093BGiBEX2tAAAAAElFTkSuQmCC)";
+        const FLAG_WIN_IMAGE = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAFVJREFUOE9jZKAQMFKon4HqBvwHuwhCYgJGTAvRXYDfAJiRSAaRbgCaK4g3AIvzQQ4ibAAOjQjfoAYVIgwIaMRvAKbLcCYX7F4Y0gaQnDWonhdIdgEAl3QQEUJ4pmUAAAAASUVORK5CYII=)";
+        var board_element;
+        var Mines_Left_Ind;
+
+        const Tile_Mine_Colors = {
+            [1]: "#fff",
+            [2]: "#9f6",
+            [3]: "#ff0",
+            [4]: "#f60",
+            [5]: "#f00",
+            [6]: "#c00",
+            [7]: "#c06",
+            [8]: "#603",
+        }
+
+        var tiles = {};
+        var mines = [];
+        var HasDoneFirstClick = false;
+        var Game_Enabled = false;
+        var isDigging = true;
+
+        function MinesAround(i) {
+            i = parseInt(i);
+            let Mines = 0;
+            TilesAround(i).forEach(function (num) {
+                if (mines.includes(num)) {
+                    Mines++;
+                }
+            });
+            return Mines;
+        }
+
+        function TilesAround(i) {
+            i = parseInt(i);
+            let l = i % BOARD_SIZE === 1;
+            let r = i % BOARD_SIZE === 0;
+            let Tiles_Around_i = [];
+            if (i > BOARD_SIZE) {
+                if (!l) Tiles_Around_i.push(i - BOARD_SIZE - 1);
+                Tiles_Around_i.push(i - BOARD_SIZE);
+                if (!r) Tiles_Around_i.push(i - BOARD_SIZE + 1);
+            }
+            if (!l) Tiles_Around_i.push(i - 1);
+            Tiles_Around_i.push(i);
+            if (!r) Tiles_Around_i.push(i + 1);
+            if (i <= BOARD_SIZE ** 2 - BOARD_SIZE) {
+                if (!l) Tiles_Around_i.push(i + BOARD_SIZE - 1);
+                Tiles_Around_i.push(i + BOARD_SIZE);
+                if (!r) Tiles_Around_i.push(i + BOARD_SIZE + 1);
+            }
+            return Tiles_Around_i;
+        }
+
+        function Flag_Tile(i) {
+            i = parseInt(i);
+            let tile = tiles[i];
+            if (tile.dug) return;
+            if (tile.flagged) {
+                tile.flagged = false;
+                console.log("Unflagged " + i);
+                $(tile.obj).css("background-image", "");
+            } else {
+                tile.flagged = true;
+                console.log("Flagged " + i);
+                $(tile.obj).css("background-image", FLAG_IMAGE);
+            }
+            let Total_Flagged = 0
+            $.each(tiles, function (num, e) {
+                if (e.flagged) Total_Flagged++;
+            });
+            if (Total_Flagged < 0) Flag_Tile(i);
+            Mines_Left_Ind.innerHTML = "Mines Left: " + parseInt(MINES_AMOUNT - Total_Flagged);
+        }
+
+        function Dig_Tile(i) {
+            i = parseInt(i);
+            if (!isDigging) {
+                Flag_Tile(i);
+                return;
+            }
+            if (!HasDoneFirstClick) {
+                HasDoneFirstClick = true;
+                for (let num = 1; num <= MINES_AMOUNT; num++) {
+                    let location = 0;
+                    while (true) {
+                        location = Math.round(Math.random() * (BOARD_SIZE ** 2 - 1)) + 1;
+                        if (location == i) {
+                            continue;
+                        }
+                        if (!mines.includes(location)) {
+                            break;
+                        }
+                    }
+                    mines.push(location);
+                }
+            }
+            let tile = tiles[i];
+
+            if (tile.flagged || (tile.dug)) return;
+            if (mines.includes(i)) {
+                Game_Enabled = false;
+                Mines_Left_Ind.innerHTML = "You Lost!";
+                mines.forEach(function (num) {
+                    let tile = tiles[num];
+                    if (!tile.flagged) {
+                        tile.obj.style.backgroundImage = MINE_IMAGE;
+                    }
+                });
+                return;
+            }
+
+            tile.dug = true;
+            let mines_around_i = MinesAround(i);
+            if (mines_around_i > 0) {
+                tile.obj.innerHTML = mines_around_i;
+                tile.obj.style.color = Tile_Mine_Colors[mines_around_i];
+            };
+            console.log("Dug " + i);
+            if (i % 2 == 0) {
+                $(tile.obj).css("background-color", "var(--DIG_COLOR_2)");
+            } else {
+                $(tile.obj).css("background-color", "var(--DIG_COLOR_1)");
+            }
+            if (mines_around_i == 0) {
+                TilesAround(i).forEach(function (num) {
+                    Dig_Tile(num);
+                });
+            }
+            CheckGameWin();
+        }
+
+        function NewGame() {
+            console.log("Game Started")
+            tiles = {};
+            mines = [];
+            switch (parseInt($("input[type='radio'][name='Difficulty']:checked").val())) {
+                case 1:
+                    BOARD_SIZE = 7;
+                    MINES_AMOUNT = 5;
+                    break;
+                case 2:
+                    BOARD_SIZE = 11;
+                    MINES_AMOUNT = 15;
+                    break;
+                case 3:
+                    BOARD_SIZE = 17;
+                    MINES_AMOUNT = 50;
+                    break;
+                case 4:
+                    BOARD_SIZE = 21;
+                    MINES_AMOUNT = 75;
+                    break;
+                case 5:
+                    BOARD_SIZE = 25;
+                    MINES_AMOUNT = 150;
+                    break;
+            }
+            HasDoneFirstClick = false;
+            Mines_Left_Ind.innerHTML = "Mines Left: " + MINES_AMOUNT;
+            $(".Board_Tile").remove();
+            $(board_element).css("width", 60 * BOARD_SIZE).css("height", 60 * BOARD_SIZE).css("grid-template-columns", `repeat(${BOARD_SIZE},auto)`);
+
+            for (let i = 1; i <= BOARD_SIZE ** 2; i++) {
+                var tile = document.createElement("div");
+                tile.className = "Board_Tile";
+                tile.addEventListener("mouseup", function (e) { if (e.button !== 0) { return } if (!Game_Enabled) return; Dig_Tile(i) });
+                tile.oncontextmenu = () => { if (!Game_Enabled) return; Flag_Tile(i); return false; };
+                if (i % 2 == 0) $(tile).css("background-color", "var(--BOARD_COLOR_2)");
+                board_element.appendChild(tile);
+                tiles[i] = { obj: tile, flagged: false, dug: false, };
+            }
+            Game_Enabled = true;
+        }
+
+        function CheckGameWin() {
+            let dug = 0;
+            $.each(tiles, function (i, Tile_Data) {
+                if (Tile_Data.dug) {
+                    dug++
+                }
+            });
+            if (dug >= BOARD_SIZE ** 2 - MINES_AMOUNT) {
+                Mines_Left_Ind.innerHTML = "You Win!";
+                mines.forEach(function (num) {
+                    let tile = tiles[num];
+                    tile.obj.style.backgroundImage = FLAG_WIN_IMAGE;
+                });
+                Game_Enabled = false;
+            }
+        }
+        
+        var Switch_Mode_Button;
+        function SwitchMode() {
+            if (isDigging) {
+                isDigging = false;
+                Switch_Mode_Button.innerHTML = "Flag Mode";
+            } else {
+                isDigging = true;
+                Switch_Mode_Button.innerHTML = "Dig Mode";
+            }
+        }
+
+        $(document).ready(function () {
+            board_element = document.getElementById("board");
+            Mines_Left_Ind = document.getElementById("Mines_Left_Ind");
+            Switch_Mode_Button = document.getElementById("Switch_Mode");
+
+            NewGame();
+            document.getElementById("New_Game_Button").onclick = NewGame;
+            addEventListener("keyup", function (e) {
+                if (e.keyCode == 78) NewGame();
+            });
+            Switch_Mode_Button.addEventListener("click",SwitchMode);
+        });
+    </script>
+    <style>
+        :root {
+            --BOARD_COLOR_1: #69923e;
+            --BOARD_COLOR_2: #4e7837;
+            --DIG_COLOR_1: #825B32;
+            --DIG_COLOR_2: #654520;
+        }
+
+        #board {
+            width: 420px;
+            height: 420px;
+            background-color: var(--BOARD_COLOR_1);
+            display: grid;
+            grid-template-columns: repeat(7, auto);
+            padding: 0 0;
+        }
+
+        .Board_Tile {
+            width: 60px;
+            height: 60px;
+            background-color: var(--BOARD_COLOR_1);
+            background-size: 100%;
+            text-align: center;
+            font-size: 52px;
+            color: #fff;
+            text-shadow: 0 0 5px #000;
+            user-select: none;
+            image-rendering: pixelated;
+        }
+
+        #Settings {
+            width: 300px;
+            height: 280px;
+            border: 1px solid #000;
+            padding: 0 5px;
+        }
+
+        #Settings>h2 {
+            text-align: center;
+        }
+    </style>
+
+<body>
+    <button id="New_Game_Button"><u>N</u>ew Game</button>
+    <label id="Mines_Left_Ind">Mines left: x</label>
+    <button id="Switch_Mode">Dig Mode</button>
+    <hr>
+    <div id="board"></div><br>
+    <h2>How to Play</h2>
+    <p>The goal is to dig up all of the tiles <u>without</u> activating mines. As you dig, be mindful of how many mines are in the 8 tiles around each square <i>(the number on tiles that have been dug up)</i>. To flag suspected tiles, <u>right click</u> on your mouse or press the <i>"Dig Mode"</i> button to switch modes. Be sure to check out the <i>options</i> menu below to adjust to your skill level! Changes are applied by pressing the <i>"New Game"</i> button, or pressing the <u>n key</u> on your keyboard.</p>
+    <div id="Settings">
+        <h2>Options</h2>
+        <label><strong>Difficulty</strong></label><br>
+        <input id="DIFF_1" type="radio" name="Difficulty" value="1">
+        <label for="DIFF_1">Easy (7x7): 5 Mines</label><br>
+        <input id="DIFF_2" type="radio" checked="1" name="Difficulty" value="2">
+        <label for="DIFF_2">Medium (11x11): 15 Mines</label><br>
+        <input id="DIFF_3" type="radio" name="Difficulty" value="3">
+        <label for="DIFF_3">Intermediate (17x17): 50 Mines</label><br>
+        <input id="DIFF_4" type="radio" name="Difficulty" value="4">
+        <label for="DIFF_4">Hard (21x21): 75 Mines</label><br>
+        <input id="DIFF_5" type="radio" name="Difficulty" value="5">
+        <label for="DIFF_5">Impossible (25x25): 150 Mines</label><br><br>
+        <label>Board Colors:</label>
+        <input id="BOARD_1" type="color" value="#69923e"
+            onchange="document.documentElement.style.setProperty('--BOARD_COLOR_1',this.value);">
+        <input id="BOARD_2" type="color" value="#4e7837"
+            onchange="document.documentElement.style.setProperty('--BOARD_COLOR_2',this.value);"><br>
+        <label>Dig Colors:</label>
+        <input id="DIG_1" type="color" value="#825B32"
+            onchange="document.documentElement.style.setProperty('--DIG_COLOR_1',this.value);">
+        <input id="DIG_2" type="color" value="#654520"
+            onchange="document.documentElement.style.setProperty('--DIG_COLOR_2',this.value);">
+    </div>
+</body>
+</head>
+
+</html>
